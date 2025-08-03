@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, Accept } from 'react-dropzone'
 import { Upload, File, X, ArrowLeft, Play } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -18,7 +18,22 @@ export default function FileUpload({ tool, files, onFilesUpload, onProcessStart,
   const { t } = useTranslation()
   const [dragOver, setDragOver] = useState(false)
 
-  const getAcceptedFileTypes = () => {
+  const getAcceptedFileTypes = (): Accept => {
+    const pdfOnly: Accept = { 'application/pdf': ['.pdf'] }
+    const imagesOnly: Accept = { 
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp']
+    }
+    const allTypes: Accept = {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png']
+    }
+
     switch (tool) {
       case 'merge':
       case 'split':
@@ -27,18 +42,13 @@ export default function FileUpload({ tool, files, onFilesUpload, onProcessStart,
       case 'watermark':
       case 'password':
       case 'pdf-to-jpg':
-        return { 'application/pdf': ['.pdf'] }
+        return pdfOnly
       case 'jpg-to-pdf':
-        return { 'image/*': ['.jpg', '.jpeg', '.png'] }
+        return imagesOnly
       case 'convert':
-        return {
-          'application/pdf': ['.pdf'],
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
-        }
+        return allTypes
       default:
-        return { 'application/pdf': ['.pdf'] }
+        return pdfOnly
     }
   }
 
