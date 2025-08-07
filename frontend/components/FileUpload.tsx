@@ -31,24 +31,34 @@ export default function FileUpload({ tool, files, onFilesUpload, onProcessStart,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
       'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png']
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
+      'text/plain': ['.txt'],
+      'text/html': ['.html', '.htm'],
+      'text/csv': ['.csv'],
+      'application/rtf': ['.rtf']
     }
 
     switch (tool) {
       case 'merge':
       case 'split':
       case 'compress':
-      case 'rotate':
-      case 'watermark':
-      case 'password':
-      case 'pdf-to-jpg':
         return pdfOnly
       case 'jpg-to-pdf':
         return imagesOnly
       case 'convert':
         return allTypes
+      // Edit tools now accept all file types
+      case 'edit-pdf':
+      case 'rotate':
+      case 'crop':
+      case 'page-numbers':
+      case 'watermark':
+      case 'password':
+      case 'pdf-to-jpg':
+        return allTypes
       default:
-        return pdfOnly
+        return allTypes
     }
   }
 
@@ -59,15 +69,26 @@ export default function FileUpload({ tool, files, onFilesUpload, onProcessStart,
     }
   }, [files, onFilesUpload])
 
+  // Get max file size based on tool type
+  const getMaxFileSize = () => {
+    const editTools = ['edit-pdf', 'rotate', 'crop', 'page-numbers', 'watermark']
+    if (editTools.includes(tool)) {
+      return 500 * 1024 * 1024 // 500MB for edit tools
+    }
+    return 100 * 1024 * 1024 // 100MB for other tools
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: getAcceptedFileTypes(),
-    maxSize: 100 * 1024 * 1024, // 100MB
+    maxSize: getMaxFileSize(),
     onDropRejected: (fileRejections) => {
       fileRejections.forEach((file) => {
         file.errors.forEach((error) => {
           if (error.code === 'file-too-large') {
-            toast.error('File is too large. Maximum size is 100MB.')
+            const editTools = ['edit-pdf', 'rotate', 'crop', 'page-numbers', 'watermark']
+            const maxSize = editTools.includes(tool) ? '500MB' : '100MB'
+            toast.error(`File is too large. Maximum size is ${maxSize}.`)
           } else if (error.code === 'file-invalid-type') {
             toast.error('Invalid file type. Please check supported formats.')
           }
@@ -135,7 +156,7 @@ export default function FileUpload({ tool, files, onFilesUpload, onProcessStart,
               </p>
             </div>
             <div className="text-sm text-secondary-500 space-y-1 text-center">
-              <p>{t('upload.maxSize', 'Maximum file size: 100MB')}</p>
+              <p>{t('upload.maxSize', `Maximum file size: ${['edit-pdf', 'rotate', 'crop', 'page-numbers', 'watermark'].includes(tool) ? '500MB' : '100MB'}`)}</p>
               <p>
                 {t('upload.supported', 'Supported formats')}: {' '}
                 {Object.values(getAcceptedFileTypes()).flat().join(', ')}

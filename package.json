@@ -11,10 +11,22 @@
     "start": "cd backend && npm start",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
-  "keywords": ["pdf", "converter", "editor", "merge", "split", "compress"],
+  "keywords": [
+    "pdf",
+    "converter",
+    "editor",
+    "merge",
+    "split",
+    "compress"
+  ],
   "author": "OneClickPDF Team",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "pdf-lib": "^1.17.1"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "form-data": "^4.0.4"
   }
-} 
+}

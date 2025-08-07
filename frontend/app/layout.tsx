@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: 'Convert, merge, split, compress and edit PDF files online. Professional PDF tools for all your document needs.',
   keywords: ['pdf', 'converter', 'merge', 'split', 'compress', 'edit', 'online'],
   authors: [{ name: 'OneClickPDF Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({

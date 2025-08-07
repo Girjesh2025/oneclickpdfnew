@@ -15,7 +15,7 @@ const imageProcessor = require('./services/imageProcessor')
 const aiProcessor = require('./services/aiProcessor')
 
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = 5001
 
 // Middleware
 app.use(helmet())

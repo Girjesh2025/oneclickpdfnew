@@ -101,18 +101,39 @@ async function imagesToPDF(files: File[]): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
   
   for (const file of files) {
-    const imageBytes = await file.arrayBuffer()
-    const image = file.type.includes('png') 
-      ? await pdf.embedPng(imageBytes)
-      : await pdf.embedJpg(imageBytes)
-    
-    const page = pdf.addPage([image.width, image.height])
-    page.drawImage(image, {
-      x: 0,
-      y: 0,
-      width: image.width,
-      height: image.height,
-    })
+    try {
+      const imageBytes = await file.arrayBuffer()
+      let image;
+      
+      // Validate file type and embed accordingly
+      if (file.type === 'image/png') {
+        image = await pdf.embedPng(imageBytes)
+      } else if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+        // Validate JPEG header before embedding
+        const uint8Array = new Uint8Array(imageBytes)
+        if (uint8Array.length < 2 || uint8Array[0] !== 0xFF || uint8Array[1] !== 0xD8) {
+          throw new Error(`Invalid JPEG file: ${file.name}`)
+        }
+        image = await pdf.embedJpg(imageBytes)
+      } else {
+        // For other image types, try to convert using Sharp if available
+        // or skip with warning
+        console.warn(`Unsupported image type for ${file.name}: ${file.type}`)
+        continue
+      }
+      
+      const page = pdf.addPage([image.width, image.height])
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height,
+      })
+    } catch (error) {
+      console.error(`Error processing image ${file.name}:`, error)
+      // Continue with other files instead of failing completely
+      continue
+    }
   }
   
   return await pdf.save()
@@ -120,8 +141,6 @@ async function imagesToPDF(files: File[]): Promise<Uint8Array> {
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureDirectories()
-    
     const formData = await request.formData()
     const tool = formData.get('tool') as string
     const files = formData.getAll('files') as File[]
@@ -133,55 +152,95 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let result: any
-    let filename: string
-    let contentType: string = 'application/pdf'
+    // Handle simple tools locally for better performance
+    const localTools = ['merge', 'split', 'compress', 'pdf-to-jpg', 'jpg-to-pdf']
+    
+    if (localTools.includes(tool)) {
+      // Handle locally
+      await ensureDirectories()
+      
+      let result: any
+      let filename: string
+      let contentType: string = 'application/pdf'
 
-    switch (tool) {
-      case 'merge':
-        result = await mergePDFs(files)
-        filename = 'merged.pdf'
-        break
+      switch (tool) {
+        case 'merge':
+          result = await mergePDFs(files)
+          filename = 'merged.pdf'
+          break
+          
+        case 'split':
+          const splitResults = await splitPDF(files[0])
+          // For demo, return the first split page
+          result = splitResults[0]
+          filename = 'split_page_1.pdf'
+          break
+          
+        case 'compress':
+          result = await compressPDF(files[0])
+          filename = 'compressed.pdf'
+          break
+          
+        case 'pdf-to-jpg':
+          const images = await pdfToImages(files[0])
+          result = images[0] // Return first image for demo
+          filename = 'converted.jpg'
+          contentType = 'image/jpeg'
+          break
+          
+        case 'jpg-to-pdf':
+          result = await imagesToPDF(files)
+          filename = 'images_to_pdf.pdf'
+          break
+      }
+
+      // Return the processed file
+      return new NextResponse(result, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
+    } else {
+      // Proxy to backend API for complex tools
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
+      
+      try {
+        const response = await fetch(`${backendUrl}/api/process`, {
+          method: 'POST',
+          body: formData,
+        })
         
-      case 'split':
-        const splitResults = await splitPDF(files[0])
-        // For demo, return the first split page
-        result = splitResults[0]
-        filename = 'split_page_1.pdf'
-        break
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Backend processing failed' }))
+          return NextResponse.json(
+            { error: errorData.error || 'Processing failed' },
+            { status: response.status }
+          )
+        }
         
-      case 'compress':
-        result = await compressPDF(files[0])
-        filename = 'compressed.pdf'
-        break
+        // Get the response as blob and forward it
+        const blob = await response.blob()
+        const contentType = response.headers.get('content-type') || 'application/octet-stream'
+        const contentDisposition = response.headers.get('content-disposition') || 'attachment; filename="processed.pdf"'
         
-      case 'pdf-to-jpg':
-        const images = await pdfToImages(files[0])
-        result = images[0] // Return first image for demo
-        filename = 'converted.jpg'
-        contentType = 'image/jpeg'
-        break
+        return new NextResponse(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Disposition': contentDisposition,
+          },
+        })
         
-      case 'jpg-to-pdf':
-        result = await imagesToPDF(files)
-        filename = 'images_to_pdf.pdf'
-        break
-        
-      default:
+      } catch (backendError) {
+        console.error('Backend API error:', backendError)
         return NextResponse.json(
-          { error: `Tool "${tool}" not implemented yet` },
-          { status: 400 }
+          { error: 'Backend service unavailable. Please try again later.' },
+          { status: 503 }
         )
+      }
     }
-
-    // Return the processed file
-    return new NextResponse(result, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-    })
 
   } catch (error) {
     console.error('Processing error:', error)

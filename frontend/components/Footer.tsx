@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { Heart, Github, Twitter, Mail } from 'lucide-react'
+import { Heart, Mail } from 'lucide-react'
 
 export default function Footer() {
   const { t } = useTranslation()
@@ -28,11 +28,11 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-secondary-800">PDF Tools</h4>
             <ul className="space-y-2 text-sm text-secondary-600">
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Merge PDF</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Split PDF</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Compress PDF</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Convert PDF</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Protect PDF</a></li>
+              <li><a href="/merge-pdf" className="hover:text-primary-600 transition-colors">Merge PDF</a></li>
+              <li><a href="/split-pdf" className="hover:text-primary-600 transition-colors">Split PDF</a></li>
+              <li><a href="/compress-pdf" className="hover:text-primary-600 transition-colors">Compress PDF</a></li>
+              <li><a href="/word-to-pdf" className="hover:text-primary-600 transition-colors">Convert PDF</a></li>
+              <li><a href="/password-protect-pdf" className="hover:text-primary-600 transition-colors">Protect PDF</a></li>
             </ul>
           </div>
 
@@ -40,11 +40,11 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-secondary-800">Resources</h4>
             <ul className="space-y-2 text-sm text-secondary-600">
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">API Documentation</a></li>
-              <li><a href="#" className="hover:text-primary-600 transition-colors">Blog</a></li>
+              <li><a href="/privacy" className="hover:text-primary-600 transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-primary-600 transition-colors">Terms of Service</a></li>
+              <li><a href="/faq" className="hover:text-primary-600 transition-colors">FAQ</a></li>
+              <li><a href="/contact" className="hover:text-primary-600 transition-colors">Contact Us</a></li>
+              <li><a href="/about" className="hover:text-primary-600 transition-colors">About Us</a></li>
             </ul>
           </div>
 
@@ -52,22 +52,6 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-secondary-800">Connect</h4>
             <div className="flex space-x-4">
-              <a
-                href="https://github.com"
-                className="p-2 bg-gray-100 hover:bg-primary-100 rounded-lg transition-colors group"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Github size={20} className="text-gray-600 group-hover:text-primary-600" />
-              </a>
-              <a
-                href="https://twitter.com"
-                className="p-2 bg-gray-100 hover:bg-primary-100 rounded-lg transition-colors group"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Twitter size={20} className="text-gray-600 group-hover:text-primary-600" />
-              </a>
               <a
                 href="mailto:hello@oneclickpdf.com"
                 className="p-2 bg-gray-100 hover:bg-primary-100 rounded-lg transition-colors group"
@@ -83,7 +67,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-200 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
           <p className="text-sm text-secondary-600">
-            © 2024 OneClickPDF. All rights reserved.
+            © 2025 OneClickPDF. All rights reserved.
           </p>
           <div className="flex items-center space-x-1 text-sm text-secondary-600">
             <span>Made with</span>

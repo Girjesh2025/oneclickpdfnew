@@ -35,47 +35,66 @@ class ConvertProcessor {
 
   // Convert PDF to Office formats with specific target
   async convertPDFToOffice(file, outputDir, targetFormat) {
+    const temp = require('temp').track(); // Automatically track and cleanup files
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execPromise = promisify(exec);
+
     try {
-      const pdfParse = require('pdf-parse')
-      const dataBuffer = fs.readFileSync(file.path)
-      const data = await pdfParse(dataBuffer)
-      
-      const text = data.text
-      let outputPath, fileExtension
-      
+      const dataBuffer = fs.readFileSync(file.path);
+      let outputFormat, filter, outputExtension;
+
       switch (targetFormat) {
         case 'pdf-to-word':
-          outputPath = path.join(outputDir, `converted_${uuidv4()}.docx`)
-          fileExtension = 'docx'
-          break
+          outputFormat = 'docx';
+          filter = '"MS Word 2007 XML"'; // Filter for DOCX
+          outputExtension = '.docx';
+          break;
         case 'pdf-to-excel':
-          outputPath = path.join(outputDir, `converted_${uuidv4()}.xlsx`)
-          fileExtension = 'xlsx'
-          break
+          outputFormat = 'xlsx';
+          filter = '"Calc MS Excel 2007 XML"'; // Filter for XLSX
+          outputExtension = '.xlsx';
+          break;
         case 'pdf-to-powerpoint':
-          outputPath = path.join(outputDir, `converted_${uuidv4()}.pptx`)
-          fileExtension = 'pptx'
-          break
+          throw new Error('PDF to PowerPoint conversion is not supported at this time.');
         default:
-          outputPath = path.join(outputDir, `converted_${uuidv4()}.txt`)
-          fileExtension = 'txt'
+          throw new Error(`Unsupported target format: ${targetFormat}`);
       }
-      
-      // For now, save as text - in production you'd use proper converters
-      fs.writeFileSync(outputPath, text, 'utf8')
+
+      const tempInputDir = temp.mkdirSync('oneclickpdf-input');
+      const tempInputPath = path.join(tempInputDir, file.originalname);
+      fs.writeFileSync(tempInputPath, dataBuffer);
+
+      const tempOutputDir = temp.mkdirSync('oneclickpdf-output');
+
+      const command = `soffice --headless --convert-to ${outputFormat}:${filter} --outdir "${tempOutputDir}" "${tempInputPath}"`;
+
+      await execPromise(command);
+
+      const originalFileName = path.basename(file.originalname, path.extname(file.originalname));
+      const convertedFileName = `${originalFileName}${outputExtension}`;
+      const convertedFilePath = path.join(tempOutputDir, convertedFileName);
+
+      if (!fs.existsSync(convertedFilePath)) {
+        throw new Error(`Conversion failed. Output file not found: ${convertedFilePath}`);
+      }
+
+      const outputPath = path.join(outputDir, `converted_${uuidv4()}${outputExtension}`);
+      fs.copyFileSync(convertedFilePath, outputPath);
 
       return {
         success: true,
         outputPath,
-        type: fileExtension,
-        pages: data.numpages
-      }
+        type: outputFormat,
+      };
     } catch (error) {
-      console.error('PDF to Office conversion error:', error)
+      console.error(`PDF to ${targetFormat} conversion error:`, error);
       return {
         success: false,
-        error: error.message
-      }
+        error: error.message || 'An unexpected error occurred during conversion.',
+      };
+    } finally {
+      temp.cleanupSync();
     }
   }
 

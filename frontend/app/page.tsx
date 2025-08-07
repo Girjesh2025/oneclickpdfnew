@@ -7,17 +7,25 @@ import ToolGrid from '@/components/ToolGrid'
 import FileUpload from '@/components/FileUpload'
 import ProcessingModal from '@/components/ProcessingModal'
 import Footer from '@/components/Footer'
-import { Sparkles, Zap, Shield, Globe } from 'lucide-react'
+import RecentTools from '@/components/RecentTools'
+import { useRecentTools } from '@/hooks/useRecentTools'
+import { Sparkles, Zap, Shield, Globe, Search, X } from 'lucide-react'
 
 export default function Home() {
   const { t } = useTranslation()
+  const { addRecentTool } = useRecentTools()
   const [selectedTool, setSelectedTool] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState('home')
 
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId)
     setFiles([])
+    // Add to recent tools when selected
+    const toolName = t(`tools.${toolId}.title`, toolId)
+    addRecentTool(toolId, toolName)
   }
 
   const handleFilesUpload = (uploadedFiles: File[]) => {
@@ -34,9 +42,26 @@ export default function Home() {
     setSelectedTool(null)
   }
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+  }
+
+  const handleClearSearch = () => {
+    setSearchQuery('')
+  }
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category)
+    // Clear search when changing category
+    setSearchQuery('')
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-mesh">
-      <Header />
+      <Header 
+        activeCategory={activeCategory}
+        onCategoryChange={handleCategoryChange}
+      />
       
       <main className="flex-1">
         {!selectedTool ? (
@@ -64,18 +89,30 @@ export default function Home() {
                     {t('hero.subtitle', 'Professional PDF tools at your fingertips. Convert, merge, split, compress and edit PDF files online with advanced AI features.')}
                   </p>
 
-                  <div className="flex flex-wrap justify-center gap-4 pt-4">
-                    <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-                      <Zap className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm text-secondary-700">Lightning Fast</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-                      <Shield className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-secondary-700">100% Secure</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-                      <Globe className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm text-secondary-700">10+ Languages</span>
+                  {/* Enhanced Search Bar */}
+                  <div className="max-w-2xl mx-auto pt-8">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20"></div>
+                      <div className="relative bg-white rounded-2xl shadow-2xl border border-white/20 p-2">
+                        <div className="flex items-center">
+                          <Search className="absolute left-6 text-gray-400 w-6 h-6" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder={t('search.placeholder', 'Search PDF tools...')}
+                            className="w-full pl-14 pr-12 py-4 text-lg border-0 rounded-2xl focus:ring-0 focus:outline-none bg-transparent placeholder-gray-400"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={handleClearSearch}
+                              className="absolute right-6 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <X className="w-6 h-6" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -93,7 +130,18 @@ export default function Home() {
                 </p>
               </div>
               
-              <ToolGrid onToolSelect={handleToolSelect} />
+              {/* Recent Tools - only show when not searching */}
+              {!searchQuery && (
+                <div className="mb-8">
+                  <RecentTools onToolSelect={handleToolSelect} />
+                </div>
+              )}
+              
+              <ToolGrid 
+                onToolSelect={handleToolSelect} 
+                searchQuery={searchQuery}
+                activeCategory={activeCategory}
+              />
             </div>
             
             {/* Features Section */}

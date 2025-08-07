@@ -74,13 +74,6 @@ const tools: Tool[] = [
   
   // Conversion Tools
   {
-    id: 'pdf-to-word',
-    icon: <FileText size={24} />,
-    gradient: 'from-blue-600 to-indigo-600',
-    supported: ['PDF'],
-    category: 'convert'
-  },
-  {
     id: 'word-to-pdf',
     icon: <Upload size={24} />,
     gradient: 'from-indigo-600 to-blue-600',
@@ -88,24 +81,10 @@ const tools: Tool[] = [
     category: 'convert'
   },
   {
-    id: 'pdf-to-excel',
-    icon: <Download size={24} />,
-    gradient: 'from-green-600 to-emerald-600',
-    supported: ['PDF'],
-    category: 'convert'
-  },
-  {
     id: 'excel-to-pdf',
     icon: <Upload size={24} />,
     gradient: 'from-emerald-600 to-green-600',
     supported: ['XLSX'],
-    category: 'convert'
-  },
-  {
-    id: 'pdf-to-powerpoint',
-    icon: <RefreshCw size={24} />,
-    gradient: 'from-orange-500 to-red-500',
-    supported: ['PDF'],
     category: 'convert'
   },
   {
@@ -143,7 +122,7 @@ const tools: Tool[] = [
     id: 'edit-pdf',
     icon: <Edit3 size={24} />,
     gradient: 'from-violet-500 to-purple-600',
-    supported: ['PDF'],
+    supported: ['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TXT', 'HTML'],
     category: 'edit',
     isNew: true
   },
@@ -151,14 +130,14 @@ const tools: Tool[] = [
     id: 'rotate',
     icon: <RotateCcw size={24} />,
     gradient: 'from-teal-500 to-teal-600',
-    supported: ['PDF'],
+    supported: ['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TXT', 'HTML'],
     category: 'edit'
   },
   {
     id: 'crop',
     icon: <Crop size={24} />,
     gradient: 'from-lime-500 to-green-500',
-    supported: ['PDF'],
+    supported: ['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TXT', 'HTML'],
     category: 'edit',
     isNew: true
   },
@@ -166,7 +145,7 @@ const tools: Tool[] = [
     id: 'page-numbers',
     icon: <Hash size={24} />,
     gradient: 'from-slate-500 to-gray-600',
-    supported: ['PDF'],
+    supported: ['PDF', 'DOCX', 'XLSX', 'PPTX', 'JPG', 'PNG', 'TXT', 'HTML'],
     category: 'edit'
   },
   
@@ -256,40 +235,54 @@ const categories = [
 
 interface ToolGridProps {
   onToolSelect: (toolId: string) => void
+  searchQuery?: string
+  activeCategory?: string
 }
 
-export default function ToolGrid({ onToolSelect }: ToolGridProps) {
+export default function ToolGrid({ onToolSelect, searchQuery = '', activeCategory = 'all' }: ToolGridProps) {
   const { t } = useTranslation()
-  const [activeCategory, setActiveCategory] = React.useState('all')
+  const [localActiveCategory, setLocalActiveCategory] = React.useState('all')
+  
+  // Use prop if provided, otherwise use local state
+  const currentCategory = activeCategory || localActiveCategory
 
-  const filteredTools = activeCategory === 'all' 
+  // Filter tools based on category and search query
+  let filteredTools = currentCategory === 'all' || currentCategory === 'home'
     ? tools 
-    : tools.filter(tool => tool.category === activeCategory)
+    : tools.filter(tool => tool.category === currentCategory)
+  
+  // Apply search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase()
+    filteredTools = filteredTools.filter(tool => {
+      const title = t(`tools.${tool.id}.title`, tool.id).toLowerCase()
+      const description = t(`tools.${tool.id}.description`, '').toLowerCase()
+      return title.includes(query) || description.includes(query) || tool.id.toLowerCase().includes(query)
+    })
+  }
 
   return (
-    <div id="tools" className="max-w-7xl mx-auto space-y-8">
-      {/* Category Filter */}
-      <div className="flex flex-wrap justify-center gap-3 mb-8">
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setActiveCategory(category.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              activeCategory === category.id
-                ? 'bg-primary-600 text-white shadow-lg transform scale-105'
-                : 'bg-white text-secondary-600 hover:bg-primary-50 hover:text-primary-600 border border-gray-200'
-            }`}
-          >
-            {category.icon}
-            <span>{category.name}</span>
-          </button>
-        ))}
-      </div>
-
+    <div id="tools" className="max-w-7xl mx-auto">
       {/* Tools Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredTools.map((tool) => (
-          <div
+      {filteredTools.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <Search className="w-16 h-16 mx-auto mb-4" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            {searchQuery ? t('search.noResults', 'No tools found') : t('search.noTools', 'No tools available')}
+          </h3>
+          <p className="text-gray-500">
+            {searchQuery 
+              ? t('search.tryDifferent', 'Try a different search term')
+              : t('search.selectCategory', 'Try selecting a different category')
+            }
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredTools.map((tool) => (
+            <div
             key={tool.id}
             onClick={() => onToolSelect(tool.id)}
             className="card hover:shadow-glow transform hover:scale-105 transition-all duration-300 cursor-pointer group relative overflow-hidden"
@@ -344,9 +337,9 @@ export default function ToolGrid({ onToolSelect }: ToolGridProps) {
             {/* Hover effect overlay */}
             <div className="absolute inset-0 border-2 border-primary-400 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
           </div>
-        ))}
-      </div>
-
+          ))}
+        </div>
+      )}
       {/* Feature count */}
       <div className="text-center mt-8">
         <p className="text-secondary-500 text-sm">
