@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       await ensureDirectories()
       
       let result: any
-      let filename: string
+      let filename: string = 'processed.pdf' // Default filename
       let contentType: string = 'application/pdf'
 
       switch (tool) {
