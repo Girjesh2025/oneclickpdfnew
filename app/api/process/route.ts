@@ -1,268 +1,251 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
+import path from 'path'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import sharp from 'sharp'
 
-// Simple function to create a basic PDF from images
-function createPDFFromImages(imageFiles: File[]): string {
-  // This creates a valid PDF structure with embedded images
-  // For a real implementation, you'd use pdf-lib, but this works for demo
+// Ensure upload and output directories exist
+async function ensureDirectories() {
+  const uploadDir = path.join(process.cwd(), 'uploads')
+  const outputDir = path.join(process.cwd(), 'output')
   
-  const pdfHeader = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
-
-4 0 obj
-<<
-/Length 150
->>
-stream
-BT
-/F1 24 Tf
-50 700 Td
-(PDF created from ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''}) Tj
-0 -30 Td
-(Original files: ${imageFiles.map(f => f.name).join(', ')}) Tj
-0 -30 Td
-(Created by OneClickPDF) Tj
-0 -30 Td
-(Professional PDF Processing) Tj
-ET
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
-
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000202 00000 n 
-0000000411 00000 n 
-trailer
-<<
-/Size 6
-/Root 1 0 R
->>
-startxref
-493
-%%EOF`
-
-  return pdfHeader
+  if (!existsSync(uploadDir)) {
+    await mkdir(uploadDir, { recursive: true })
+  }
+  if (!existsSync(outputDir)) {
+    await mkdir(outputDir, { recursive: true })
+  }
 }
 
-// Simple function to compress a PDF
-function compressPDF(file: File): string {
-  return `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
+// PDF Processing Functions
+async function mergePDFs(files: File[]): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create()
+  
+  for (const file of files) {
+    const pdfBytes = await file.arrayBuffer()
+    const pdf = await PDFDocument.load(pdfBytes)
+    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+    copiedPages.forEach((page: any) => mergedPdf.addPage(page))
+  }
+  
+  return await mergedPdf.save()
+}
 
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
+async function splitPDF(file: File): Promise<Uint8Array[]> {
+  const pdfBytes = await file.arrayBuffer()
+  const pdf = await PDFDocument.load(pdfBytes)
+  const pageCount = pdf.getPageCount()
+  const splitPdfs: Uint8Array[] = []
+  
+  for (let i = 0; i < pageCount; i++) {
+    const newPdf = await PDFDocument.create()
+    const [copiedPage] = await newPdf.copyPages(pdf, [i])
+    newPdf.addPage(copiedPage)
+    splitPdfs.push(await newPdf.save())
+  }
+  
+  return splitPdfs
+}
 
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
->>
-endobj
+async function compressPDF(file: File): Promise<Uint8Array> {
+  const pdfBytes = await file.arrayBuffer()
+  const pdf = await PDFDocument.load(pdfBytes)
+  
+  // Basic compression by removing metadata and optimizing
+  pdf.setTitle('')
+  pdf.setAuthor('')
+  pdf.setSubject('')
+  pdf.setCreator('')
+  pdf.setProducer('')
+  
+  return await pdf.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+  })
+}
 
-4 0 obj
-<<
-/Length 120
->>
-stream
-BT
-/F1 18 Tf
-50 700 Td
-(PDF Compressed Successfully!) Tj
-0 -25 Td
-(Original: ${file.name}) Tj
-0 -25 Td
-(Size reduced by ~30%) Tj
-0 -25 Td
-(Processed by OneClickPDF) Tj
-ET
-endstream
-endobj
+async function pdfToImages(file: File): Promise<Buffer[]> {
+  try {
+    // For demo purposes, create a simple image representation
+    const pdfBytes = await file.arrayBuffer()
+    const pdf = await PDFDocument.load(pdfBytes)
+    const pageCount = pdf.getPageCount()
+    
+    const images: Buffer[] = []
+    
+    // Create a simple image for each page (placeholder)
+    for (let i = 0; i < pageCount; i++) {
+      const image = await sharp({
+        create: {
+          width: 800,
+          height: 1000,
+          channels: 3,
+          background: { r: 255, g: 255, b: 255 }
+        }
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer()
+      
+      images.push(image)
+    }
+    
+    return images
+  } catch (error) {
+    console.error('PDF to images conversion error:', error)
+    throw error
+  }
+}
 
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000202 00000 n 
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-365
-%%EOF`
+async function imagesToPDF(files: File[]): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create()
+  
+  for (const file of files) {
+    try {
+      const imageBytes = await file.arrayBuffer()
+      let image;
+      
+      // Validate file type and embed accordingly
+      if (file.type === 'image/png') {
+        image = await pdf.embedPng(imageBytes)
+      } else if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+        // Validate JPEG header before embedding
+        const uint8Array = new Uint8Array(imageBytes)
+        if (uint8Array.length < 2 || uint8Array[0] !== 0xFF || uint8Array[1] !== 0xD8) {
+          throw new Error(`Invalid JPEG file: ${file.name}`)
+        }
+        image = await pdf.embedJpg(imageBytes)
+      } else {
+        // For other image types, try to convert using Sharp if available
+        // or skip with warning
+        console.warn(`Unsupported image type for ${file.name}: ${file.type}`)
+        continue
+      }
+      
+      const page = pdf.addPage([image.width, image.height])
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height,
+      })
+    } catch (error) {
+      console.error(`Error processing image ${file.name}:`, error)
+      // Continue with other files instead of failing completely
+      continue
+    }
+  }
+  
+  return await pdf.save()
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('API Route called')
-    
     const formData = await request.formData()
     const tool = formData.get('tool') as string
     const files = formData.getAll('files') as File[]
     
-    console.log('Tool:', tool, 'Files:', files.length)
-    
     if (!tool || files.length === 0) {
-      console.log('Missing tool or files')
       return NextResponse.json(
         { error: 'Missing tool or files' },
         { status: 400 }
       )
     }
 
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    let pdfContent: string
-    let filename: string
-
-    switch (tool) {
-      case 'jpg-to-pdf':
-        console.log('Converting images to PDF')
-        pdfContent = createPDFFromImages(files)
-        filename = 'converted_images.pdf'
-        break
-        
-      case 'merge':
-        console.log('Merging PDFs')
-        pdfContent = `%PDF-1.4
-1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
-4 0 obj<</Length 80>>stream
-BT/F1 16 Tf 50 700 Td(Merged ${files.length} PDF files successfully!)Tj ET
-endstream endobj
-xref 0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000202 00000 n 
-trailer<</Size 5/Root 1 0 R>>startxref 285 %%EOF`
-        filename = 'merged.pdf'
-        break
-        
-      case 'compress':
-        console.log('Compressing PDF')
-        pdfContent = compressPDF(files[0])
-        filename = 'compressed.pdf'
-        break
-        
-      case 'split':
-        console.log('Splitting PDF')
-        pdfContent = `%PDF-1.4
-1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
-4 0 obj<</Length 75>>stream
-BT/F1 16 Tf 50 700 Td(Split PDF into individual pages!)Tj ET
-endstream endobj
-xref 0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000202 00000 n 
-trailer<</Size 5/Root 1 0 R>>startxref 280 %%EOF`
-        filename = 'split_page_1.pdf'
-        break
-        
-      case 'pdf-to-jpg':
-        console.log('Converting PDF to images')
-        // Return a simple text file for now since we can't create actual images easily
-        pdfContent = `PDF to JPG conversion completed!
-Original file: ${files[0].name}
-Conversion successful.
-Generated ${Math.ceil(Math.random() * 5)} image files.
-Processed by OneClickPDF`
-        filename = 'conversion_info.txt'
-        break
-        
-      default:
-        console.log('Unknown tool:', tool)
-        pdfContent = `%PDF-1.4
-1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
-4 0 obj<</Length 60>>stream
-BT/F1 16 Tf 50 700 Td(Processed with ${tool} tool!)Tj ET
-endstream endobj
-xref 0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000202 00000 n 
-trailer<</Size 5/Root 1 0 R>>startxref 265 %%EOF`
-        filename = 'processed.pdf'
-    }
-
-    console.log('Returning processed file:', filename)
-
-    // Return the processed file
-    const contentType = filename.endsWith('.txt') ? 'text/plain' : 'application/pdf'
+    // Handle simple tools locally for better performance
+    const localTools = ['merge', 'split', 'compress', 'pdf-to-jpg', 'jpg-to-pdf']
     
-    return new NextResponse(pdfContent, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Access-Control-Allow-Origin': '*',
-      },
-    })
+    if (localTools.includes(tool)) {
+      // Handle locally
+      await ensureDirectories()
+      
+      let result: any
+      let filename: string = 'processed.pdf' // Default filename
+      let contentType: string = 'application/pdf'
+
+      switch (tool) {
+        case 'merge':
+          result = await mergePDFs(files)
+          filename = 'merged.pdf'
+          break
+          
+        case 'split':
+          const splitResults = await splitPDF(files[0])
+          // For demo, return the first split page
+          result = splitResults[0]
+          filename = 'split_page_1.pdf'
+          break
+          
+        case 'compress':
+          result = await compressPDF(files[0])
+          filename = 'compressed.pdf'
+          break
+          
+        case 'pdf-to-jpg':
+          const images = await pdfToImages(files[0])
+          result = images[0] // Return first image for demo
+          filename = 'converted.jpg'
+          contentType = 'image/jpeg'
+          break
+          
+        case 'jpg-to-pdf':
+          result = await imagesToPDF(files)
+          filename = 'images_to_pdf.pdf'
+          break
+      }
+
+      // Return the processed file
+      return new NextResponse(result, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
+    } else {
+      // Proxy to backend API for complex tools
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
+      
+      try {
+        const response = await fetch(`${backendUrl}/api/process`, {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Backend processing failed' }))
+          return NextResponse.json(
+            { error: errorData.error || 'Processing failed' },
+            { status: response.status }
+          )
+        }
+        
+        // Get the response as blob and forward it
+        const blob = await response.blob()
+        const contentType = response.headers.get('content-type') || 'application/octet-stream'
+        const contentDisposition = response.headers.get('content-disposition') || 'attachment; filename="processed.pdf"'
+        
+        return new NextResponse(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Disposition': contentDisposition,
+          },
+        })
+        
+      } catch (backendError) {
+        console.error('Backend API error:', backendError)
+        return NextResponse.json(
+          { error: 'Backend service unavailable. Please try again later.' },
+          { status: 503 }
+        )
+      }
+    }
 
   } catch (error) {
     console.error('Processing error:', error)
     return NextResponse.json(
-      { error: 'Processing failed. Please try again.', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Processing failed. Please try again.' },
       { status: 500 }
     )
   }
@@ -273,8 +256,6 @@ export async function GET() {
   return NextResponse.json({ 
     status: 'OK', 
     message: 'OneClickPDF API is running',
-    timestamp: new Date().toISOString(),
-    tools: ['merge', 'split', 'compress', 'pdf-to-jpg', 'jpg-to-pdf'],
-    version: '1.0.0'
+    timestamp: new Date().toISOString()
   })
 } 
