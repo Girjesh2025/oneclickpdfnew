@@ -262,7 +262,7 @@ export default function ToolGrid({ onToolSelect, searchQuery = '', activeCategor
   }
 
   return (
-    <div id="tools" className="max-w-7xl mx-auto">
+    <div id="tools" className="max-w-7xl mx-auto scroll-mt-28 md:scroll-mt-32">
       {/* Tools Grid */}
       {filteredTools.length === 0 ? (
         <div className="text-center py-12">

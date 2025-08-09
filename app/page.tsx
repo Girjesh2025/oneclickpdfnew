@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Header from '@/components/Header'
 import ToolGrid, { tools } from '@/components/ToolGrid'
@@ -20,6 +20,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('home')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchBoxRef = useRef<HTMLDivElement | null>(null)
 
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId)
@@ -53,6 +54,45 @@ export default function Home() {
     setShowSuggestions(false)
   }
 
+  // Close suggestions on outside click or Escape
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!searchBoxRef.current) return
+      if (!searchBoxRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSuggestions(false)
+      if (e.key === 'Enter' && showSuggestions) {
+        const q = searchQuery.trim().toLowerCase()
+        const first = tools.find(tl => {
+          const title = t(`tools.${tl.id}.title`, tl.id).toLowerCase()
+          const desc = t(`tools.${tl.id}.description`, '').toLowerCase()
+          return title.includes(q) || desc.includes(q) || tl.id.toLowerCase().includes(q)
+        })
+        if (first) {
+          setShowSuggestions(false)
+          setSearchQuery('')
+          setActiveCategory('all')
+          const el = document.getElementById('tools')
+          if (el) {
+            const headerOffset = 96
+            const top = el.getBoundingClientRect().top + window.pageYOffset - headerOffset
+            window.scrollTo({ top, behavior: 'smooth' })
+          }
+          handleToolSelect(first.id)
+        }
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [showSuggestions, searchQuery, t])
+
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category)
     // Clear search when changing category
@@ -78,7 +118,7 @@ export default function Home() {
         {!selectedTool ? (
           <div className="space-y-16">
             {/* Hero Section */}
-            <div className="relative overflow-hidden py-20">
+            <div className="relative overflow-visible py-20">
               {/* Background decoration */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-indigo-50/30 to-purple-50/50"></div>
               <div className="absolute top-10 left-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
@@ -101,7 +141,7 @@ export default function Home() {
                   </p>
 
                   {/* Enhanced Search Bar */}
-                  <div className="max-w-2xl mx-auto pt-8">
+                  <div className="max-w-2xl mx-auto pt-8" id="search-box" ref={searchBoxRef}>
                     <div className="relative">
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20"></div>
                       <div className="relative bg-white rounded-2xl shadow-2xl border border-white/20 p-2">
@@ -128,7 +168,7 @@ export default function Home() {
                     {/* Suggestions dropdown */}
                     {showSuggestions && (
                       <div className="relative max-w-2xl mx-auto">
-                        <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                        <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50">
                           <ul className="max-h-72 overflow-auto divide-y divide-gray-100">
                             {tools
                               .filter(tl => {
