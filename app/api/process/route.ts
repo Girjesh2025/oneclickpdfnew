@@ -3,7 +3,6 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import sharp from 'sharp'
 
 // Ensure upload and output directories exist
 async function ensureDirectories() {
@@ -67,6 +66,15 @@ async function compressPDF(file: File): Promise<Uint8Array> {
 
 async function pdfToImages(file: File): Promise<Buffer[]> {
   try {
+    // Dynamically import sharp to avoid crashing the route when it's not bundled
+    let sharpLib: any
+    try {
+      const mod = await import('sharp')
+      sharpLib = (mod as any).default || mod
+    } catch (e) {
+      console.warn('sharp not available in this deployment; pdf-to-jpg disabled')
+      throw new Error('PDF to image conversion requires sharp, which is not available')
+    }
     // For demo purposes, create a simple image representation
     const pdfBytes = await file.arrayBuffer()
     const pdf = await PDFDocument.load(pdfBytes)
@@ -76,7 +84,7 @@ async function pdfToImages(file: File): Promise<Buffer[]> {
     
     // Create a simple image for each page (placeholder)
     for (let i = 0; i < pageCount; i++) {
-      const image = await sharp({
+      const image = await sharpLib({
         create: {
           width: 800,
           height: 1000,
@@ -182,10 +190,17 @@ export async function POST(request: NextRequest) {
           break
           
         case 'pdf-to-jpg':
-          const images = await pdfToImages(files[0])
-          result = images[0] // Return first image for demo
-          filename = 'converted.jpg'
-          contentType = 'image/jpeg'
+          try {
+            const images = await pdfToImages(files[0])
+            result = images[0] // Return first image for demo
+            filename = 'converted.jpg'
+            contentType = 'image/jpeg'
+          } catch (e) {
+            return NextResponse.json(
+              { error: 'PDF to JPG is not available in this deployment.' },
+              { status: 501 }
+            )
+          }
           break
           
         case 'jpg-to-pdf':
