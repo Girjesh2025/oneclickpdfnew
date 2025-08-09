@@ -9,6 +9,9 @@ const nextConfig = {
     outputFileTracingExcludes: {
       '*': [
         '**/.next/**',
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/.vercel/**',
         'frontend/**',
         'oneclickpdf-frontend/**',
         'temp-fix/**',
