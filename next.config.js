@@ -6,6 +6,17 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['sharp', 'pdf-lib'],
+    outputFileTracingExcludes: {
+      '*': [
+        '**/.next/**',
+        'frontend/**',
+        'oneclickpdf-frontend/**',
+        'temp-fix/**',
+        'temp-fix-frontend-deploy/**',
+        'output/**',
+        'uploads/**',
+      ],
+    },
   },
 }
 
