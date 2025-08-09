@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Header from '@/components/Header'
-import ToolGrid from '@/components/ToolGrid'
+import ToolGrid, { tools } from '@/components/ToolGrid'
 import FileUpload from '@/components/FileUpload'
 import ProcessingModal from '@/components/ProcessingModal'
 import Footer from '@/components/Footer'
@@ -19,6 +19,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('home')
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId)
@@ -44,16 +45,24 @@ export default function Home() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
+    setShowSuggestions(!!query.trim())
   }
 
   const handleClearSearch = () => {
     setSearchQuery('')
+    setShowSuggestions(false)
   }
 
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category)
     // Clear search when changing category
     setSearchQuery('')
+    setShowSuggestions(false)
+    // Smooth scroll to tools grid
+    const el = document.getElementById('tools')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   return (
@@ -114,6 +123,49 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
+                    {/* Suggestions dropdown */}
+                    {showSuggestions && (
+                      <div className="relative max-w-2xl mx-auto">
+                        <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                          <ul className="max-h-72 overflow-auto divide-y divide-gray-100">
+                            {tools
+                              .filter(tl => {
+                                const q = searchQuery.toLowerCase()
+                                const title = t(`tools.${tl.id}.title`, tl.id).toLowerCase()
+                                const desc = t(`tools.${tl.id}.description`, '').toLowerCase()
+                                return title.includes(q) || desc.includes(q) || tl.id.toLowerCase().includes(q)
+                              })
+                              .slice(0, 8)
+                              .map((tl) => (
+                                <li
+                                  key={tl.id}
+                                  className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
+                                  onClick={() => {
+                                    setShowSuggestions(false)
+                                    setSearchQuery('')
+                                    setActiveCategory('all')
+                                    // Scroll to grid and select
+                                    const el = document.getElementById('tools')
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                    handleToolSelect(tl.id)
+                                  }}
+                                >
+                                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-primary-500 to-purple-600"></span>
+                                  <span className="text-secondary-800 font-medium">{t(`tools.${tl.id}.title`, tl.id)}</span>
+                                </li>
+                              ))}
+                            {tools.filter(tl => {
+                              const q = searchQuery.toLowerCase()
+                              const title = t(`tools.${tl.id}.title`, tl.id).toLowerCase()
+                              const desc = t(`tools.${tl.id}.description`, '').toLowerCase()
+                              return title.includes(q) || desc.includes(q) || tl.id.toLowerCase().includes(q)
+                            }).length === 0 && (
+                              <li className="px-4 py-3 text-gray-500">{t('search.noResults', 'No tools found')}</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -30,7 +30,7 @@ import {
   Zap
   } from 'lucide-react'
 
-interface Tool {
+export interface Tool {
   id: string
   icon: React.ReactNode
   gradient: string
@@ -40,7 +40,7 @@ interface Tool {
   isPro?: boolean
 }
 
-const tools: Tool[] = [
+export const tools: Tool[] = [
   // Essential PDF Tools
   {
     id: 'merge',
