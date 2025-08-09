@@ -69,7 +69,7 @@ export default function PrivacyPolicy() {
 
             <h2 className="text-2xl font-semibold text-secondary-800 mt-8 mb-4">11. Contact Us</h2>
             <p className="text-secondary-600">
-              If you have questions or wish to exercise your privacy rights, please contact us at <a href="mailto:hello@oneclickpdf.com">hello@oneclickpdf.com</a>. We are committed to working with you to resolve any concerns promptly and transparently.
+              If you have questions or wish to exercise your privacy rights, please contact us at <a href="mailto:hello@oneclickpdf.info">hello@oneclickpdf.info</a>. We are committed to working with you to resolve any concerns promptly and transparently.
             </p>
           </div>
         </div>
