@@ -58,10 +58,12 @@ export default function Home() {
     // Clear search when changing category
     setSearchQuery('')
     setShowSuggestions(false)
-    // Smooth scroll to tools grid
+    // Smooth scroll to tools grid with offset for fixed header
     const el = document.getElementById('tools')
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const headerOffset = 96 // ~fixed header height
+      const top = el.getBoundingClientRect().top + window.pageYOffset - headerOffset
+      window.scrollTo({ top, behavior: 'smooth' })
     }
   }
 
@@ -144,9 +146,13 @@ export default function Home() {
                                     setShowSuggestions(false)
                                     setSearchQuery('')
                                     setActiveCategory('all')
-                                    // Scroll to grid and select
+                                    // Scroll to grid with header offset and select
                                     const el = document.getElementById('tools')
-                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                    if (el) {
+                                      const headerOffset = 96
+                                      const top = el.getBoundingClientRect().top + window.pageYOffset - headerOffset
+                                      window.scrollTo({ top, behavior: 'smooth' })
+                                    }
                                     handleToolSelect(tl.id)
                                   }}
                                 >
