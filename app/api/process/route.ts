@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+// Ensure this route runs on Node.js (not Edge) and is always dynamic
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+// Hint for platforms like Vercel to allow longer processing time
+export const maxDuration = 30
 import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
@@ -219,10 +224,24 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Proxy to backend API for complex tools
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
+      // Prefer BACKEND_URL, fallback to NEXT_PUBLIC_BACKEND_URL (for convenience in Vercel dashboard)
+      const backendUrl =
+        process.env.BACKEND_URL ||
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        ''
       
       try {
-        const response = await fetch(`${backendUrl}/api/process`, {
+        if (!backendUrl) {
+          return NextResponse.json(
+            {
+              error:
+                'Backend is not configured. Please set BACKEND_URL (or NEXT_PUBLIC_BACKEND_URL) in your deployment environment to the URL of the backend server.'
+            },
+            { status: 500 }
+          )
+        }
+
+        const response = await fetch(`${backendUrl.replace(/\/$/, '')}/api/process`, {
           method: 'POST',
           body: formData,
         })
