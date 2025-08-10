@@ -4,23 +4,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 // Hint for platforms like Vercel to allow longer processing time
 export const maxDuration = 30
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
-// Ensure upload and output directories exist
-async function ensureDirectories() {
-  const uploadDir = path.join(process.cwd(), 'uploads')
-  const outputDir = path.join(process.cwd(), 'output')
-  
-  if (!existsSync(uploadDir)) {
-    await mkdir(uploadDir, { recursive: true })
-  }
-  if (!existsSync(outputDir)) {
-    await mkdir(outputDir, { recursive: true })
-  }
-}
+// No filesystem operations needed for serverless
 
 // PDF Processing Functions
 async function mergePDFs(files: File[]): Promise<Uint8Array> {
@@ -169,8 +155,7 @@ export async function POST(request: NextRequest) {
     const localTools = ['merge', 'split', 'compress', 'pdf-to-jpg', 'jpg-to-pdf', 'organize', 'rotate', 'crop', 'page-numbers', 'watermark', 'protect-pdf', 'unlock-pdf', 'edit-pdf', 'sign-pdf', 'redact-pdf']
     
     if (localTools.includes(tool)) {
-      // Handle locally
-      await ensureDirectories()
+      // Handle locally (in-memory processing for serverless)
       
       let result: any
       let filename: string = 'processed.pdf' // Default filename
