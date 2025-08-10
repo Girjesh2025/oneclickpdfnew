@@ -66,6 +66,16 @@ A modern, professional web application for PDF manipulation and conversion, simi
 4. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
+## Environment Variables
+
+Create a `.env.local` file in the project root for local development (and configure the same in Vercel Project Settings for production). See `.env.example` for a template.
+
+```bash
+BACKEND_URL=http://localhost:5001
+# Optional fallback
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5001
+```
+
 ## 📁 Project Structure
 
 ```
@@ -111,15 +121,31 @@ A modern, professional web application for PDF manipulation and conversion, simi
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Deploy with zero configuration
+You can deploy the frontend (Next.js) on Vercel. The backend (Express) can run on any Node hosting (Render/Railway/Fly.io/VPS or Vercel if using a separate project with Node server).
 
-### Manual Deployment
-1. Build the application:
-   ```bash
-   npm run build
+### Vercel (Frontend)
+1. Push your changes to GitHub.
+2. Import the repo in Vercel.
+3. Set Environment Variables (Project Settings → Environment Variables):
+   - `BACKEND_URL` → e.g. `https://oneclickpdf-backend.yourdomain.com`
+   - (Optional) `NEXT_PUBLIC_BACKEND_URL` → same as above for convenience
+4. Build settings:
+   - Framework: Next.js (detected)
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+5. Deploy.
+
+This project forces the API route to run on Node.js and disables static caching for `/app/api/process`. If `BACKEND_URL` is not set, the route returns a clear error.
+
+### Backend
+Run the backend in `/backend` on a Node hosting provider and expose it over HTTPS. Ensure CORS allows your Vercel domain. Example environment:
+
+```
+PORT=5001
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+Point `BACKEND_URL` in Vercel to this backend’s public URL.
    ```
 2. Start the production server:
    ```bash
