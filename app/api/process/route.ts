@@ -212,8 +212,18 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Processing error:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     return NextResponse.json(
-      { error: 'Processing failed. Please try again.' },
+      { 
+        error: 'Processing failed. Please try again.',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
