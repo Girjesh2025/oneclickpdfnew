@@ -10,16 +10,26 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 // PDF Processing Functions
 async function mergePDFs(files: File[]): Promise<Uint8Array> {
-  const mergedPdf = await PDFDocument.create()
-  
-  for (const file of files) {
-    const pdfBytes = await file.arrayBuffer()
-    const pdf = await PDFDocument.load(pdfBytes)
-    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-    copiedPages.forEach((page: any) => mergedPdf.addPage(page))
+  try {
+    const mergedPdf = await PDFDocument.create()
+    
+    for (const file of files) {
+      console.log(`Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`)
+      const pdfBytes = await file.arrayBuffer()
+      console.log(`Loaded ${pdfBytes.byteLength} bytes`)
+      const pdf = await PDFDocument.load(pdfBytes)
+      console.log(`PDF loaded with ${pdf.getPageCount()} pages`)
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+      copiedPages.forEach((page: any) => mergedPdf.addPage(page))
+    }
+    
+    const result = await mergedPdf.save()
+    console.log(`Merge result: ${result.byteLength} bytes`)
+    return result
+  } catch (error) {
+    console.error('Error in mergePDFs:', error)
+    throw new Error(`PDF merge failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
-  
-  return await mergedPdf.save()
 }
 
 async function splitPDF(file: File): Promise<Uint8Array[]> {
