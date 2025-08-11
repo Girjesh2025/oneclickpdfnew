@@ -126,15 +126,30 @@ async function imagesToPDF(files: File[]): Promise<Uint8Array> {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('API called with request')
     const formData = await request.formData()
     const tool = formData.get('tool') as string
     const files = formData.getAll('files') as File[]
     
+    console.log('Received:', { tool, fileCount: files.length, fileNames: files.map(f => f.name) })
+    
     if (!tool || files.length === 0) {
+      console.log('Missing tool or files:', { tool, fileCount: files.length })
       return NextResponse.json(
         { error: 'Missing tool or files' },
         { status: 400 }
       )
+    }
+    
+    // Validate files
+    for (const file of files) {
+      if (!file || file.size === 0) {
+        console.log('Invalid file detected:', file)
+        return NextResponse.json(
+          { error: 'Invalid or empty file detected' },
+          { status: 400 }
+        )
+      }
     }
 
     // Handle all tools locally for better performance (no backend required)
@@ -149,20 +164,26 @@ export async function POST(request: NextRequest) {
 
       switch (tool) {
         case 'merge':
+          console.log('Processing merge with', files.length, 'files')
           result = await mergePDFs(files)
           filename = 'merged.pdf'
+          console.log('Merge completed')
           break
           
         case 'split':
+          console.log('Processing split with file:', files[0].name)
           const splitResults = await splitPDF(files[0])
           // For demo, return the first split page
           result = splitResults[0]
           filename = 'split_page_1.pdf'
+          console.log('Split completed')
           break
           
         case 'compress':
+          console.log('Processing compress with file:', files[0].name)
           result = await compressPDF(files[0])
           filename = 'compressed.pdf'
+          console.log('Compress completed')
           break
           
         case 'pdf-to-jpg':
