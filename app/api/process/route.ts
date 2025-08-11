@@ -10,26 +10,16 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 // PDF Processing Functions
 async function mergePDFs(files: File[]): Promise<Uint8Array> {
-  try {
-    const mergedPdf = await PDFDocument.create()
-    
-    for (const file of files) {
-      console.log(`Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`)
-      const pdfBytes = await file.arrayBuffer()
-      console.log(`Loaded ${pdfBytes.byteLength} bytes`)
-      const pdf = await PDFDocument.load(pdfBytes)
-      console.log(`PDF loaded with ${pdf.getPageCount()} pages`)
-      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-      copiedPages.forEach((page: any) => mergedPdf.addPage(page))
-    }
-    
-    const result = await mergedPdf.save()
-    console.log(`Merge result: ${result.byteLength} bytes`)
-    return result
-  } catch (error) {
-    console.error('Error in mergePDFs:', error)
-    throw new Error(`PDF merge failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  const mergedPdf = await PDFDocument.create()
+  
+  for (const file of files) {
+    const pdfBytes = await file.arrayBuffer()
+    const pdf = await PDFDocument.load(pdfBytes)
+    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+    copiedPages.forEach((page: any) => mergedPdf.addPage(page))
   }
+  
+  return await mergedPdf.save()
 }
 
 async function splitPDF(file: File): Promise<Uint8Array[]> {
@@ -136,15 +126,11 @@ async function imagesToPDF(files: File[]): Promise<Uint8Array> {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('API called with request')
     const formData = await request.formData()
     const tool = formData.get('tool') as string
     const files = formData.getAll('files') as File[]
     
-    console.log('Received:', { tool, fileCount: files.length, fileNames: files.map(f => f.name) })
-    
     if (!tool || files.length === 0) {
-      console.log('Missing tool or files:', { tool, fileCount: files.length })
       return NextResponse.json(
         { error: 'Missing tool or files' },
         { status: 400 }
@@ -154,7 +140,6 @@ export async function POST(request: NextRequest) {
     // Validate files
     for (const file of files) {
       if (!file || file.size === 0) {
-        console.log('Invalid file detected:', file)
         return NextResponse.json(
           { error: 'Invalid or empty file detected' },
           { status: 400 }
@@ -174,26 +159,20 @@ export async function POST(request: NextRequest) {
 
       switch (tool) {
         case 'merge':
-          console.log('Processing merge with', files.length, 'files')
           result = await mergePDFs(files)
           filename = 'merged.pdf'
-          console.log('Merge completed')
           break
           
         case 'split':
-          console.log('Processing split with file:', files[0].name)
           const splitResults = await splitPDF(files[0])
           // For demo, return the first split page
           result = splitResults[0]
           filename = 'split_page_1.pdf'
-          console.log('Split completed')
           break
           
         case 'compress':
-          console.log('Processing compress with file:', files[0].name)
           result = await compressPDF(files[0])
           filename = 'compressed.pdf'
-          console.log('Compress completed')
           break
           
         case 'pdf-to-jpg':

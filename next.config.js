@@ -1,25 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   images: {
     domains: ['localhost'],
   },
   experimental: {
-    serverComponentsExternalPackages: ['sharp', 'pdf-lib'],
-    outputFileTracingExcludes: {
-      '*': [
-        '**/.next/**',
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/.vercel/**',
-        'frontend/**',
-        'oneclickpdf-frontend/**',
-        'temp-fix/**',
-        'temp-fix-frontend-deploy/**',
-        'output/**',
-        'uploads/**',
-      ],
-    },
+    serverComponentsExternalPackages: ['pdf-lib'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Fix for Vercel deployment issues
+      config.externals = config.externals || []
+      config.externals.push({
+        'utf-8-validate': 'commonjs utf-8-validate',
+        'bufferutil': 'commonjs bufferutil',
+      })
+    }
+    return config
   },
 }
 
